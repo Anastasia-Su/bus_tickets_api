@@ -22,7 +22,7 @@ class Ticket(models.Model):
     )
 
     def clean(self):
-        if not (1 <= self.seat <= 50):
+        if not (1 <= self.seat <= 20):
             raise ValidationError(
                 {
                     "seat": "Seat must be in range 1–50.",
