@@ -1,0 +1,84 @@
+body {
+    margin-top: 20px;
+}
+h4, h5 {
+    margin: 20px 0 20px 0;
+    color: #333;
+    text-align: center;
+}
+.instructions-container {
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    margin: 20px auto;
+    width: 80%;
+    max-width: 600px;
+    background-color: #f9f9f9;
+    text-align: left;
+}
+
+.instructions-container h5 {
+    margin-bottom: 15px;
+    font-size: 22px;
+    color: #444;
+}
+
+.instructions-container ol {
+    list-style-type: decimal;
+    padding-left: 40px;
+    margin: 0;
+}
+
+.instructions-container li {
+    margin-bottom: 10px;
+    font-size: 16px;
+    color: #666;
+}
+.container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .routes-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+    }
+
+    .route-column {
+        border: 1px solid #ccc;
+        padding: 10px;
+        border-radius: 8px;
+    }
+
+    .seats-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 5px;
+        margin-top: 10px;
+    }
+
+    .seat {
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+
+    .seat.occupied {
+        background-color: #e0e0e0;
+        color: #fff;
+    }
+
+    .seat.free {
+        background-color: #4caf50;
+        color: #fff;
+    }
+
+    .time {
+        font-size: 14px;
+    }

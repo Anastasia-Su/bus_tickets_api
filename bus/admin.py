@@ -1,3 +1,6 @@
 from django.contrib import admin
 
-# Register your models here.
+from bus.models import Journey, Ticket
+
+admin.site.register(Journey)
+admin.site.register(Ticket)

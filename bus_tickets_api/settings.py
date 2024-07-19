@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "debug_toolbar",
     "bus",
+    "frontend",
 ]
 
 MIDDLEWARE = [
@@ -65,7 +66,7 @@ ROOT_URLCONF = "bus_tickets_api.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / "templates"],
+        "DIRS": [BASE_DIR / "frontend/templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [

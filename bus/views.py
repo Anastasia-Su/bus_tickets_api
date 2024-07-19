@@ -30,20 +30,3 @@ class JourneyViewSet(viewsets.ModelViewSet):
 class TicketViewSet(viewsets.ModelViewSet):
     queryset = Ticket.objects.all()
     serializer_class = TicketSerializer
-
-    # def list(self, request, *args, **kwargs):
-    #     tickets = self.get_queryset()
-    #     formatted_data = self.format_tickets(tickets)
-    #     return Response(formatted_data)
-    #
-    # def format_tickets(self, tickets):
-    #     formatted_data = {}
-    #     for ticket in tickets:
-    #         seat = ticket.seat
-    #
-    #         journey = str(ticket.journey)
-    #         formatted_data.setdefault(journey, {}).setdefault([]).append(
-    #             f"seat: {seat}"
-    #         )
-    #
-    #     return formatted_data

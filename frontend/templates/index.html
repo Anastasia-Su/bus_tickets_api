@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="header-container">
+        <h4>Welcome to Tickets Service!</h4>
+    </div>
+
+    <div class="container">
+        {% if bought_seats_by_route %}
+            <div class="routes-grid">
+                {% for route, info in bought_seats_by_route.items %}
+                    <div class="route-column">
+                        <h6>{{ route }}</h6>
+                        <div class="time">({{ info.departure_time|date:"d.m.y, H:i" }})</div>
+
+                        <div class="seats-grid">
+                            {% for seat_number in seat_numbers %}
+                                <div class="seat {% if seat_number in info.seats %}occupied{% else %}free{% endif %}">
+                                    {{ seat_number }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p>No routes available.</p>
+        {% endif %}
+    </div>
+
+    <div class="instructions-container">
+        <h5>Instructions</h5>
+        <ol>
+          <li>API location: <b>/api/bus/</b> or <b>/api/doc/swagger/</b></li>
+          <li>You can perform there CRUD operations for routes and tickets.</li>
+          <li>You can also use Telegram bot for viewing and buying tickets.</li>
+          <li>See detailed instructions in README.md.</li>
+        </ol>
+    </div>
+{% endblock %}
