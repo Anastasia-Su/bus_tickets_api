@@ -1,9 +1,13 @@
 import random
+from io import BytesIO
+
 import telebot
 
 from datetime import date
+from PIL import Image, ImageDraw, ImageFont
+
 from django.conf import settings
-from django.core.mail import send_mail
+from django.core.mail import send_mail, EmailMessage
 from django.core.management.base import BaseCommand
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
@@ -30,6 +34,7 @@ class TelegramBot:
 
             if self.user_email:
                 if call.data == "check_available_tickets":
+                    # Retrieve available routes and send them as inline buttons
                     routes = Journey.objects.values_list("route", flat=True)
 
                     route_markup = self.generate_routes(routes)
@@ -39,7 +44,17 @@ class TelegramBot:
                         "Please select a route.",
                         reply_markup=route_markup,
                     )
-                # if call.data == "check_my_tickets":
+                if call.data == "check_my_tickets":
+                    # Display the user's tickets
+                    my_tickets = Ticket.objects.filter(email=self.user_email)
+
+                    my_tickets_markup = self.generate_my_tickets(my_tickets)
+                    if my_tickets.exists():
+                        self.bot.send_message(
+                            chat_id,
+                            "Here is your tickets:",
+                            reply_markup=my_tickets_markup,
+                        )
 
             else:
                 self.bot.send_message(chat_id, "Please enter your email.")
@@ -82,6 +97,7 @@ class TelegramBot:
                 username = Ticket.objects.filter(email=self.user_email)[0].name
 
                 if self.bought_seats and seat_number not in self.bought_seats:
+                    # Update database
                     Ticket.objects.create(
                         name=username,
                         email=self.user_email,
@@ -89,19 +105,38 @@ class TelegramBot:
                         seat=seat_number,
                     )
 
-                    self.bot.answer_callback_query(
-                        call.id,
-                        f"Seat {seat_number} selected and ticket created",
+                    # Create image
+                    image_file = self.create_ticket_image(
+                        username,
+                        journey.route,
+                        journey.departure_time,
+                        seat_number,
                     )
-                    self.bot.send_message(
-                        chat_id,
-                        f"Ticket for seat {seat_number} on route {self.selected_route} created for {username}.",
+                    image_file.name = f"{username}_ticket.jpg"
+
+                    # Send the email with the image attachment
+                    email = EmailMessage(
+                        subject="You have bought a ticket",
+                        body=f"Hello {username},\n\nPlease find your ticket attached.",
+                        from_email=settings.EMAIL_HOST_USER,
+                        to=[
+                            self.user_email,
+                        ],
                     )
-                # else:
-                #     self.bot.send_message(
-                #         chat_id,
-                #         f"Ticket for seat {seat_number} on route {self.selected_route} is not available.",
-                #     )
+                    email.attach(
+                        image_file.name, image_file.getvalue(), "image/jpeg"
+                    )
+                    email.send(fail_silently=False)
+
+                self.bot.answer_callback_query(
+                    call.id,
+                    f"Seat {seat_number} selected",
+                )
+                self.bot.send_message(
+                    chat_id,
+                    f"Ticket for seat {seat_number} created and sent to your email.",
+                )
+
             else:
                 self.bot.send_message(chat_id, "Please select a route.")
 
@@ -157,6 +192,23 @@ class TelegramBot:
         return markup
 
     @staticmethod
+    def generate_my_tickets(tickets):
+        markup = InlineKeyboardMarkup(row_width=1)
+        buttons = []
+
+        for ticket in tickets:
+            buttons.append(
+                InlineKeyboardButton(
+                    text=f"Route: {ticket.journey.route}, "
+                    f"seat: {ticket.seat}",
+                    callback_data=f"ticket_{ticket}",
+                )
+            )
+
+        markup.add(*buttons)
+        return markup
+
+    @staticmethod
     def generate_seat_grid(bought_seats):
         markup = InlineKeyboardMarkup(row_width=2)
         buttons = []
@@ -179,6 +231,31 @@ class TelegramBot:
 
         markup.add(*buttons)
         return markup
+
+    @staticmethod
+    def create_ticket_image(username, route, departure_time, seat_number):
+        img = Image.new("RGB", (400, 200), color=(255, 255, 255))
+        font = ImageFont.load_default()
+        draw = ImageDraw.Draw(img)
+
+        draw.text((10, 10), f"Name: {username}", fill=(0, 0, 0), font=font)
+        draw.text((10, 40), f"Route: {route}", fill=(0, 0, 0), font=font)
+        draw.text(
+            (10, 70),
+            f"Departure Time: {departure_time}",
+            fill=(0, 0, 0),
+            font=font,
+        )
+        draw.text(
+            (10, 100), f"Seat Number: {seat_number}", fill=(0, 0, 0), font=font
+        )
+
+        # Save the image to a BytesIO object
+        img_byte_arr = BytesIO()
+        img.save(img_byte_arr, format="JPEG")
+        img_byte_arr.seek(0)
+
+        return img_byte_arr
 
     def start_polling(self):
         self.bot.infinity_polling(interval=0, timeout=20)
