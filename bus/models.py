@@ -1,13 +1,17 @@
 from django.db import models
 from rest_framework.exceptions import ValidationError
 
+from bus.constants import TOTAL_SEAT_COUNT
+
 
 class Journey(models.Model):
     route = models.CharField()
     departure_time = models.DateTimeField()
 
     def __str__(self):
-        return f"{self.route} ({self.departure_time})"
+        return (
+            f"{self.route} ({self.departure_time.strftime('%d.%m.%y, %H:%M')})"
+        )
 
     class Meta:
         ordering = ("departure_time",)
@@ -22,10 +26,10 @@ class Ticket(models.Model):
     )
 
     def clean(self):
-        if not (1 <= self.seat <= 20):
+        if not (1 <= self.seat <= TOTAL_SEAT_COUNT):
             raise ValidationError(
                 {
-                    "seat": "Seat must be in range 1–20.",
+                    "seat": f"Seat must be in range 1–{TOTAL_SEAT_COUNT}.",
                 }
             )
 

@@ -4,7 +4,7 @@ from bus.models import Journey, Ticket
 
 
 class JourneySerializer(serializers.ModelSerializer):
-    departure_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M")
+    departure_time = serializers.DateTimeField(format="%d.%m.%y, %H:%M")
 
     class Meta:
         model = Journey
@@ -26,6 +26,21 @@ class TicketSerializer(serializers.ModelSerializer):
 
 
 class TicketListSerializer(TicketSerializer):
+    journey = serializers.SerializerMethodField(read_only=True)
+
+    @staticmethod
+    def get_journey(obj):
+        return (
+            f"{obj.journey.route} "
+            f"({obj.journey.departure_time.strftime('%d.%m.%y, %H:%M')})"
+        )
+
+    class Meta:
+        model = Ticket
+        fields = ("id", "name", "email", "seat", "journey")
+
+
+class TicketDetailSerializer(TicketListSerializer):
     pass
 
 

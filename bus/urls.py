@@ -8,8 +8,8 @@ from .views import (
 
 router = routers.DefaultRouter()
 
-router.register("journeys", JourneyViewSet)
-router.register("tickets", TicketViewSet)
+router.register("journeys", JourneyViewSet, basename="journey")
+router.register("tickets", TicketViewSet, basename="ticket")
 
 urlpatterns = [path("", include(router.urls))]
 
