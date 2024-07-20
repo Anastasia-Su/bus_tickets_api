@@ -1,9 +1,13 @@
 from datetime import datetime
+from typing import Type
 
-from django.db.models import Count, Q
+from django.db.models import Count, QuerySet
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework import viewsets
+from rest_framework.request import Request
+from rest_framework.response import Response
+from rest_framework.serializers import ModelSerializer
 
 from bus.constants import TOTAL_SEAT_COUNT
 from bus.models import Journey, Ticket
@@ -24,7 +28,7 @@ class JourneyViewSet(viewsets.ModelViewSet):
 
     serializer_class = JourneySerializer
 
-    def get_serializer_class(self):
+    def get_serializer_class(self) -> Type[ModelSerializer]:
         if self.action == "list":
             return JourneyListSerializer
 
@@ -38,7 +42,7 @@ class TicketViewSet(viewsets.ModelViewSet):
     queryset = Ticket.objects.select_related("journey")
     serializer_class = TicketSerializer
 
-    def get_serializer_class(self):
+    def get_serializer_class(self) -> Type[ModelSerializer]:
         if self.action == "list":
             return TicketListSerializer
 
@@ -47,7 +51,7 @@ class TicketViewSet(viewsets.ModelViewSet):
 
         return TicketSerializer
 
-    def get_queryset(self):
+    def get_queryset(self) -> QuerySet[Ticket]:
         route = self.request.query_params.get("route")
         date = self.request.query_params.get("date")
 
@@ -76,5 +80,5 @@ class TicketViewSet(viewsets.ModelViewSet):
             ),
         ]
     )
-    def list(self, request, *args, **kwargs):
+    def list(self, request: Request, *args, **kwargs) -> Response:
         return super().list(request, *args, **kwargs)

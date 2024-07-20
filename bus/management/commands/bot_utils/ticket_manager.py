@@ -1,5 +1,4 @@
 from django.db.models import QuerySet
-
 from bus.models import Ticket, Journey
 
 

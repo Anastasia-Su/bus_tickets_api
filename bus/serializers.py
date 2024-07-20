@@ -29,7 +29,7 @@ class TicketListSerializer(TicketSerializer):
     journey = serializers.SerializerMethodField(read_only=True)
 
     @staticmethod
-    def get_journey(obj):
+    def get_journey(obj: Ticket) -> str:
         return (
             f"{obj.journey.route} "
             f"({obj.journey.departure_time.strftime('%d.%m.%y, %H:%M')})"
@@ -44,16 +44,13 @@ class TicketDetailSerializer(TicketListSerializer):
     pass
 
 
-class TicketSeatsSerializer(TicketSerializer):
-    class Meta:
-        model = Ticket
-        fields = ("seat",)
-
-
 class JourneyDetailSerializer(JourneySerializer):
-    taken_places = TicketSeatsSerializer(
-        source="tickets", many=True, read_only=True
-    )
+    taken_places = serializers.SerializerMethodField()
+
+    @staticmethod
+    def get_taken_places(obj: Journey) -> str:
+        seats = obj.tickets.values_list("seat", flat=True)
+        return ", ".join(map(str, seats))
 
     class Meta:
         model = Journey

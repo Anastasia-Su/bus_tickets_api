@@ -25,7 +25,7 @@ class Ticket(models.Model):
         Journey, on_delete=models.CASCADE, related_name="tickets"
     )
 
-    def clean(self):
+    def clean(self) -> None:
         if not (1 <= self.seat <= TOTAL_SEAT_COUNT):
             raise ValidationError(
                 {
@@ -33,7 +33,7 @@ class Ticket(models.Model):
                 }
             )
 
-    def save(self, *args, **kwargs):
+    def save(self, *args, **kwargs) -> None:
         self.full_clean()
         super().save(*args, **kwargs)
 
