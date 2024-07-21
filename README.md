@@ -33,8 +33,8 @@ set EMAIL_HOST_PASSWORD=<email password>
 Run commands:
 ```shell
 python manage.py migrate
-python manage.py runserver
 python manage.py collectstatic
+python manage.py runserver
 ```  
 
 If you want to use admin panel, create a superuser:   
