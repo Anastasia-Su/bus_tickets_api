@@ -232,5 +232,6 @@ class Command(BaseCommand):
     def handle(self, *args, **options) -> None:
         """Entry point for the Django management command
         to start the Telegram bot."""
+
         telegram_bot = TelegramBot()
         telegram_bot.start_polling()
