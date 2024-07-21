@@ -34,32 +34,34 @@ Run commands:
 ```shell
 python manage.py migrate
 python manage.py runserver
+python manage.py collectstatic
 ```  
 
-If you want to use admin panel, create superuser: type `python manage.py createsuperuser`.  
+If you want to use admin panel, create a superuser:   
+type `python manage.py createsuperuser`.  
 
 ## Telegram bot
 Create a bot using BotFather and add its token to .env file.
+Run the bot:  
 
-
-#### Set up
 ```shell
 - python manage.py start_bot
 ```
 
 #### Workflow
-* Enter `/start`command to start bot.
+* Enter `/start`command to start the bot.
 * Enter your email. 
-* If the email exists in database, you will see options to display your bought tickets or the all available ones.  
+* If this email exists in the database,  
+you will see options to display your bought tickets or the all available ones.  
 ![alt text](images/start_bot.png)  
 
-* If you choose to display available tickets, you will be prompted to select route.  
+* If you choose to display available tickets, you will be prompted to select a route.  
 ![alt text](images/route.png)  
 
-* Then you will see grid with tickets.  
+* Then you will see a grid with tickets.  
 ![alt text](images/tickets.png)  
 
-* If you click on an available one, you buy it, and it will be sent to your email.  
+* If you click an available seat, you buy it, and it will be sent to your email.  
 ![alt text](images/email.png)  
 
 ## Frontend  
@@ -76,3 +78,12 @@ You have static webpage, that pulls ticket and route data from db.
 * Telegram bot
 * Filter tickets
 * Frontend (Django) integration
+
+## Tests
+Run tests: `python manage.py test`
+
+## Links  
+
+- Deployed project: http://164.92.238.217/
+- Telegram bot: http://t.me/tickets_notification_bot
+
