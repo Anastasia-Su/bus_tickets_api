@@ -1,108 +1,98 @@
 import telebot
 from django.conf import settings
 from django.core.management.base import BaseCommand
-from django.db.models import QuerySet
 from telebot.types import (
-    InlineKeyboardMarkup,
-    InlineKeyboardButton,
     Message,
     CallbackQuery,
 )
 
-from bus.management.commands.bot_utils.email_service import EmailService
-from bus.management.commands.bot_utils.image_generator import ImageGenerator
+from bus.management.commands.bot_utils.main_options_display import (
+    MainOptionsDisplay,
+)
+from bus.management.commands.bot_utils.ticket_processor import TicketProcessor
 from bus.management.commands.bot_utils.ticket_manager import TicketManager
-from bus.models import Journey, Ticket
+from bus.management.commands.bot_utils.uis_generators import UIGenerators
+from bus.management.commands.bot_utils.user_tickets_checker import (
+    UserTicketsChecker,
+)
+from bus.management.commands.bot_utils.validators import Validators
+from bus.models import Journey
 
 
 class TelegramBot:
     def __init__(self) -> None:
         self.bot = telebot.TeleBot(settings.TELEGRAM["bot_token"])
         self.user_email = None
+        self.user_name = None
         self.selected_route = None
         self.bought_seats = None
+        self.seat_number = None
+        self.user_states = {}
+        self.verification_codes = {}
 
         self.setup_handlers()
 
     def setup_handlers(self) -> None:
         @self.bot.message_handler(commands=["start", "help"])
         def send_welcome(message: Message) -> None:
-            """Handles the /start and /help commands
-            by prompting the user to enter their email."""
+            """Handles the /start and /help commands."""
 
-            self.bot.send_message(message.chat.id, "Please enter your email.")
+            self.bot.send_message(
+                message.chat.id,
+                "Welcome!\n"
+                "I can help you buy bus tickets quickly and without registration.\n"
+                "You need to enter your name and email, "
+                "select route and a ticket you want to buy.\n"
+                "Then you will receive an email with the ticket attached.\n"
+                "You can also see all the tickets you have already purchased.\n",
+            )
 
-        @self.bot.message_handler(func=lambda message: True)
-        def handle_email(message: Message) -> None:
-            """Handles incoming messages by checking
-            if the message text is an email.
-            If the email exists in the system,
-            it greets the user and shows options.
-            """
-
-            chat_id = message.chat.id
-            if TicketManager.email_exists(message.text):
-                self.user_email = message.text
-                username = TicketManager.get_user_tickets(self.user_email)[
-                    0
-                ].name
-                self.bot.send_message(
-                    chat_id,
-                    f"Hello, {username}!",
-                )
-                markup = telebot.types.InlineKeyboardMarkup()
-                check_available = telebot.types.InlineKeyboardButton(
-                    "Check available tickets",
-                    callback_data="check_available_tickets",
-                )
-                check_my = telebot.types.InlineKeyboardButton(
-                    "Check my tickets",
-                    callback_data="check_my_tickets",
-                )
-                markup.add(check_available, check_my)
-                self.bot.send_message(
-                    chat_id, "What do you want to do?", reply_markup=markup
-                )
-            else:
-                self.bot.send_message(
-                    chat_id, "Your email does not exist in our database"
-                )
+            main_options_sender = MainOptionsDisplay(self)
+            main_options_sender.send_options_message(message.chat.id)
 
         @self.bot.callback_query_handler(
-            func=lambda call: call.data
-            in ["check_available_tickets", "check_my_tickets"]
+            func=lambda call: call.data == "goodbye"
         )
-        def handle_main_options(call: CallbackQuery) -> None:
-            """Handles main options for checking
-            available tickets or user tickets."""
+        def handle_goodbye(call: CallbackQuery) -> None:
+            """Handles goodbye command."""
+
+            self.user_email = None
+            self.user_name = None
+            self.selected_route = None
+            self.bought_seats = None
+            self.seat_number = None
+            self.user_states = {}
+            self.verification_codes = {}
+            self.bot.send_message(call.message.chat.id, "Goodbye!")
+
+            self.bot.send_message(
+                call.message.chat.id, "To start over, type /start"
+            )
+
+        @self.bot.callback_query_handler(
+            func=lambda call: call.data == "check_available_tickets"
+        )
+        def handle_check_available(call: CallbackQuery) -> None:
+            """Handles checking available tickets."""
 
             chat_id = call.message.chat.id
-            if self.user_email:
-                if call.data == "check_available_tickets":
-                    routes = Journey.objects.values_list("route", flat=True)
-                    route_markup = self.generate_routes(routes)
-                    self.bot.send_message(
-                        chat_id,
-                        "Please select a route.",
-                        reply_markup=route_markup,
-                    )
-                elif call.data == "check_my_tickets":
-                    my_tickets = TicketManager.get_user_tickets(
-                        self.user_email
-                    )
-                    my_tickets_markup = self.generate_my_tickets(my_tickets)
-                    if my_tickets.exists():
-                        self.bot.send_message(
-                            chat_id,
-                            "Here is your tickets:",
-                            reply_markup=my_tickets_markup,
-                        )
-                    else:
-                        self.bot.send_message(
-                            chat_id, "You have no tickets yet."
-                        )
-            else:
-                self.bot.send_message(chat_id, "Please enter your email.")
+
+            routes = Journey.objects.values_list("route", flat=True)
+            route_markup = UIGenerators.generate_routes(routes)
+            self.bot.send_message(
+                chat_id,
+                "Please select a route.",
+                reply_markup=route_markup,
+            )
+
+        @self.bot.callback_query_handler(
+            func=lambda call: call.data == "check_my_tickets"
+        )
+        def handle_check_my(call: CallbackQuery) -> None:
+            """Handles checking user tickets."""
+
+            user_tickets_checker = UserTicketsChecker(self)
+            user_tickets_checker.check_my_tickets(call.message.chat.id)
 
         @self.bot.callback_query_handler(
             func=lambda call: call.data.startswith("route_")
@@ -112,114 +102,138 @@ class TelegramBot:
             for the selected route."""
 
             chat_id = call.message.chat.id
-            if self.user_email:
-                selected_route = call.data.split("route_")[1]
-                self.selected_route = selected_route
-                self.bought_seats = TicketManager.get_bought_seats(
-                    selected_route
-                )
-                seats_markup = self.generate_seat_grid(self.bought_seats)
-                self.bot.send_message(
-                    chat_id,
-                    f"Click a seat if you want to buy it "
-                    f"for the route {selected_route}.",
-                    reply_markup=seats_markup,
-                )
-            else:
-                self.bot.send_message(chat_id, "Please enter your email.")
+
+            selected_route = call.data.split("route_")[1]
+            self.selected_route = selected_route
+            self.bought_seats = TicketManager.get_bought_seats(selected_route)
+            seats_markup = UIGenerators.generate_seat_grid(self.bought_seats)
+            self.bot.send_message(
+                chat_id,
+                f"Click a seat if you want to buy it "
+                f"for the route {selected_route}.",
+                reply_markup=seats_markup,
+            )
 
         @self.bot.callback_query_handler(
             func=lambda call: call.data.startswith("seat_")
         )
         def handle_seat_selection(call: CallbackQuery) -> None:
-            """Handles seat selection and processes
-            ticket creation and email sending."""
+            """Handles seat selection and prompts
+            entering email and username."""
 
             chat_id = call.message.chat.id
             seat_number = int(call.data.split("_")[1])
-            if self.selected_route:
-                journey = Journey.objects.get(route=self.selected_route)
-                username = TicketManager.get_user_tickets(self.user_email)[
-                    0
-                ].name
-                if seat_number not in self.bought_seats:
-                    TicketManager.create_ticket(
-                        self.user_email, username, journey, seat_number
-                    )
-                    image_file = ImageGenerator.create_ticket_image(
-                        username,
-                        journey.route,
-                        journey.departure_time,
-                        seat_number,
-                    )
-                    image_file.name = f"{username}_ticket.jpg"
-                    EmailService.send_ticket_email(
-                        self.user_email, username, image_file
-                    )
-                    self.bot.answer_callback_query(
-                        call.id,
-                        f"Seat {seat_number} selected",
-                    )
+            self.seat_number = seat_number
+
+            if seat_number not in self.bought_seats:
+                if not self.user_email:
+                    self.bot.send_message(chat_id, "Please enter your email.")
+                    self.user_states[chat_id] = "email"
+
+                elif self.user_email and not self.user_name:
                     self.bot.send_message(
                         chat_id,
-                        f"Ticket for seat {seat_number} created "
-                        f"and sent to your email.",
+                        "Please enter your first and last name.",
                     )
+                    self.user_states[chat_id] = "name"
+
+        @self.bot.message_handler(
+            func=lambda message: self.user_states.get(message.chat.id)
+            == "email"
+        )
+        def handle_email_message(message: Message) -> None:
+            """Handles email message."""
+
+            chat_id = message.chat.id
+
+            if Validators.is_valid_email(message.text):
+                send_processor = TicketProcessor(self)
+                send_processor.send_verification_code(chat_id, message)
+
             else:
-                self.bot.send_message(chat_id, "Please select a route.")
+                self.bot.send_message(
+                    chat_id,
+                    f"{message.text} is invalid address.\n"
+                    f"Please try again.",
+                )
 
-    @staticmethod
-    def generate_routes(routes: list[str]) -> InlineKeyboardMarkup:
-        """Generates an inline keyboard markup for route selection."""
+        @self.bot.message_handler(
+            func=lambda message: self.user_states.get(message.chat.id)
+            == "verification"
+        )
+        def handle_verification_message(message: Message) -> None:
+            """Handles verification message.
+            Prompts to enter username, if a user wants to purchase a ticket."""
 
-        markup = InlineKeyboardMarkup(row_width=1)
-        buttons = [
-            InlineKeyboardButton(text=route, callback_data=f"route_{route}")
-            for route in routes
-        ]
-        markup.add(*buttons)
-        return markup
+            chat_id = message.chat.id
+            if message.text == self.verification_codes.get(self.user_email):
+                self.bot.send_message(chat_id, "Verification successful!")
 
-    @staticmethod
-    def generate_my_tickets(tickets: QuerySet[Ticket]) -> InlineKeyboardMarkup:
-        """Generates an inline keyboard markup
-        for displaying user's tickets."""
+                if self.seat_number:
+                    # If a user has clicked a seat number,
+                    # they will be prompted to enter their name for the ticket.
+                    self.bot.send_message(
+                        chat_id,
+                        "Please enter your first and last name.",
+                    )
+                    self.user_states[chat_id] = "name"
+                else:
+                    # If a user has clicked an option to check their tickets,
+                    # they will see them, if any.
+                    user_tickets_checker = UserTicketsChecker(self)
+                    user_tickets_checker.check_my_tickets(message.chat.id)
 
-        markup = InlineKeyboardMarkup(row_width=1)
-        buttons = [
-            InlineKeyboardButton(
-                text=f"Route: {ticket.journey.route}, seat: {ticket.seat}",
-                callback_data=f"ticket_{ticket.id}",
+                    main_options_sender = MainOptionsDisplay(self)
+                    main_options_sender.send_options_message(chat_id)
+
+            else:
+                # A user can reenter email, if the previous one was wrong.
+                if Validators.is_valid_email(message.text):
+                    send_processor = TicketProcessor(self)
+                    send_processor.send_verification_code(chat_id, message)
+                else:
+                    # Handles wrongly entered validation code.
+                    self.bot.send_message(
+                        chat_id,
+                        "Verification code is incorrect. Please try again.\n"
+                        "Or enter another email address.",
+                    )
+
+        @self.bot.message_handler(
+            func=lambda message: self.user_states.get(message.chat.id)
+            == "name"
+        )
+        def handle_username_message(message: Message) -> None:
+            """Handles username message."""
+
+            chat_id = message.chat.id
+            self.user_name = message.text
+            self.bot.send_message(
+                chat_id,
+                f"Nice to meet you, {self.user_name}.",
             )
-            for ticket in tickets
-        ]
-        markup.add(*buttons)
-        return markup
 
-    @staticmethod
-    def generate_seat_grid(
-        bought_seats: QuerySet[Ticket],
-    ) -> InlineKeyboardMarkup:
-        """Generates an inline keyboard markup for seat selection."""
+            proceed_cancel_options = MainOptionsDisplay(self)
+            proceed_cancel_options.send_proceed_cancel(chat_id)
 
-        markup = InlineKeyboardMarkup(row_width=2)
-        buttons = [
-            InlineKeyboardButton(
-                text=(
-                    f"❌ {seat_number}"
-                    if seat_number in bought_seats
-                    else f"✅ {seat_number}"
-                ),
-                callback_data=(
-                    f"bought_{seat_number}"
-                    if seat_number in bought_seats
-                    else f"seat_{seat_number}"
-                ),
-            )
-            for seat_number in range(1, 21)
-        ]
-        markup.add(*buttons)
-        return markup
+        @self.bot.callback_query_handler(
+            func=lambda call: call.data == "proceed"
+        )
+        def handle_proceed(call: CallbackQuery) -> None:
+            """Handles command to proceed ticket creation."""
+
+            chat_id = call.message.chat.id
+            ticket_processor = TicketProcessor(self)
+            ticket_processor.send_ticket(chat_id)
+
+        @self.bot.callback_query_handler(
+            func=lambda call: call.data == "cancel"
+        )
+        def handle_cancel(call: CallbackQuery) -> None:
+            """Handles command to cancel ticket creation."""
+
+            main_options_sender = MainOptionsDisplay(self)
+            main_options_sender.send_options_message(call.message.chat.id)
 
     def start_polling(self) -> None:
         """Starts the bot's polling mechanism

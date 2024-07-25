@@ -31,6 +31,14 @@ class TicketManager:
         return Ticket.objects.filter(email=email)
 
     @staticmethod
+    def get_username(email: str) -> str:
+        """Gets username from db."""
+
+        filtered = Ticket.objects.filter(email=email)
+        if len(filtered):
+            return filtered[0].name
+
+    @staticmethod
     def email_exists(email: str) -> bool:
         """Checks if email exists in db."""
 
