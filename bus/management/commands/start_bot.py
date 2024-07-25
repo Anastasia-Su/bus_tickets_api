@@ -1,18 +1,11 @@
-import random
 import telebot
 from django.conf import settings
-from django.core.mail import send_mail
 from django.core.management.base import BaseCommand
-from django.db.models import QuerySet
 from telebot.types import (
-    InlineKeyboardMarkup,
-    InlineKeyboardButton,
     Message,
     CallbackQuery,
 )
 
-from bus.management.commands.bot_utils.email_service import EmailService
-from bus.management.commands.bot_utils.image_generator import ImageGenerator
 from bus.management.commands.bot_utils.main_options_display import (
     MainOptionsDisplay,
 )
@@ -23,7 +16,7 @@ from bus.management.commands.bot_utils.user_tickets_checker import (
     UserTicketsChecker,
 )
 from bus.management.commands.bot_utils.validators import Validators
-from bus.models import Journey, Ticket
+from bus.models import Journey
 
 
 class TelegramBot:
@@ -46,8 +39,10 @@ class TelegramBot:
 
             self.bot.send_message(
                 message.chat.id,
-                "Welcome! I can help you buy bus tickets quickly and without registration.\n"
-                "You need to enter your name and email, select route and a ticket you want to buy.\n"
+                "Welcome!\n"
+                "I can help you buy bus tickets quickly and without registration.\n"
+                "You need to enter your name and email, "
+                "select route and a ticket you want to buy.\n"
                 "Then you will receive an email with the ticket attached.\n"
                 "You can also see all the tickets you have already purchased.\n",
             )
@@ -78,8 +73,7 @@ class TelegramBot:
             func=lambda call: call.data == "check_available_tickets"
         )
         def handle_check_available(call: CallbackQuery) -> None:
-            """Handles main options for checking
-            available tickets."""
+            """Handles checking available tickets."""
 
             chat_id = call.message.chat.id
 
@@ -95,8 +89,7 @@ class TelegramBot:
             func=lambda call: call.data == "check_my_tickets"
         )
         def handle_check_my(call: CallbackQuery) -> None:
-            """Handles main options for checking
-            user tickets."""
+            """Handles checking user tickets."""
 
             user_tickets_checker = UserTicketsChecker(self)
             user_tickets_checker.check_my_tickets(call.message.chat.id)
@@ -125,8 +118,8 @@ class TelegramBot:
             func=lambda call: call.data.startswith("seat_")
         )
         def handle_seat_selection(call: CallbackQuery) -> None:
-            """Handles seat selection and processes
-            ticket creation and email sending."""
+            """Handles seat selection and prompts
+            entering email and username."""
 
             chat_id = call.message.chat.id
             seat_number = int(call.data.split("_")[1])
@@ -149,6 +142,8 @@ class TelegramBot:
             == "email"
         )
         def handle_email_message(message: Message) -> None:
+            """Handles email message."""
+
             chat_id = message.chat.id
 
             if Validators.is_valid_email(message.text):
@@ -156,13 +151,10 @@ class TelegramBot:
                 send_processor.send_verification_code(chat_id, message)
 
             else:
-                email_status_message = (
-                    f"{message.text} is invalid address.\n"
-                    f"Please try again."
-                )
                 self.bot.send_message(
                     chat_id,
-                    email_status_message,
+                    f"{message.text} is invalid address.\n"
+                    f"Please try again.",
                 )
 
         @self.bot.message_handler(
@@ -170,17 +162,24 @@ class TelegramBot:
             == "verification"
         )
         def handle_verification_message(message: Message) -> None:
+            """Handles verification message.
+            Prompts to enter username, if a user wants to purchase a ticket."""
+
             chat_id = message.chat.id
             if message.text == self.verification_codes.get(self.user_email):
                 self.bot.send_message(chat_id, "Verification successful!")
 
                 if self.seat_number:
+                    # If a user has clicked a seat number,
+                    # they will be prompted to enter their name for the ticket.
                     self.bot.send_message(
                         chat_id,
                         "Please enter your first and last name.",
                     )
                     self.user_states[chat_id] = "name"
                 else:
+                    # If a user has clicked an option to check their tickets,
+                    # they will see them, if any.
                     user_tickets_checker = UserTicketsChecker(self)
                     user_tickets_checker.check_my_tickets(message.chat.id)
 
@@ -188,10 +187,12 @@ class TelegramBot:
                     main_options_sender.send_options_message(chat_id)
 
             else:
+                # A user can reenter email, if the previous one was wrong.
                 if Validators.is_valid_email(message.text):
                     send_processor = TicketProcessor(self)
                     send_processor.send_verification_code(chat_id, message)
                 else:
+                    # Handles wrongly entered validation code.
                     self.bot.send_message(
                         chat_id,
                         "Verification code is incorrect. Please try again.\n"
@@ -203,6 +204,8 @@ class TelegramBot:
             == "name"
         )
         def handle_username_message(message: Message) -> None:
+            """Handles username message."""
+
             chat_id = message.chat.id
             self.user_name = message.text
             self.bot.send_message(
@@ -221,7 +224,7 @@ class TelegramBot:
 
             chat_id = call.message.chat.id
             ticket_processor = TicketProcessor(self)
-            ticket_processor.process_ticket(chat_id)
+            ticket_processor.send_ticket(chat_id)
 
         @self.bot.callback_query_handler(
             func=lambda call: call.data == "cancel"

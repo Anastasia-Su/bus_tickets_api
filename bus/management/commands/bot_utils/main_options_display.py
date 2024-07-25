@@ -6,6 +6,8 @@ class MainOptionsDisplay:
         self.bot_instance = bot_instance
 
     def send_proceed_cancel(self, chat_id: int) -> None:
+        """A user can choose to proceed with ticket order or to cancel it."""
+
         self.bot_instance.bot.send_message(chat_id, "Please check your order.")
         self.bot_instance.bot.send_message(
             chat_id,
@@ -30,6 +32,8 @@ class MainOptionsDisplay:
         )
 
     def send_options_message(self, chat_id: int) -> None:
+        """Three main commands in the bot"""
+
         markup = InlineKeyboardMarkup(row_width=2)
         check_available = InlineKeyboardButton(
             "Check available tickets",

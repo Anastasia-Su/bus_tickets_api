@@ -61,5 +61,7 @@ class UIGenerators:
         return markup
 
     @staticmethod
-    def generate_verification_code():
+    def generate_verification_code() -> str:
+        """Generates 6-digit verification code."""
+
         return "".join(random.choices("0123456789", k=6))

@@ -1,6 +1,5 @@
-import smtplib
-
 from django.core.mail import send_mail
+from telebot.types import Message
 
 from bus.management.commands.bot_utils.email_service import EmailService
 from bus.management.commands.bot_utils.image_generator import ImageGenerator
@@ -9,7 +8,6 @@ from bus.management.commands.bot_utils.main_options_display import (
 )
 from bus.management.commands.bot_utils.ticket_manager import TicketManager
 from bus.management.commands.bot_utils.uis_generators import UIGenerators
-from bus.management.commands.bot_utils.validators import Validators
 from bus.models import Journey
 from bus_tickets_api import settings
 
@@ -18,7 +16,9 @@ class TicketProcessor:
     def __init__(self, bot_instance):
         self.bot_instance = bot_instance
 
-    def send_verification_code(self, chat_id: int, message) -> None:
+    def send_verification_code(self, chat_id: int, message: Message) -> None:
+        """Logic for sending a verification code to the email entered."""
+
         verification_code = UIGenerators.generate_verification_code()
         send_mail(
             "Verification Code",
@@ -39,7 +39,9 @@ class TicketProcessor:
         self.bot_instance.verification_codes[message.text] = verification_code
         self.bot_instance.user_states[chat_id] = "verification"
 
-    def process_ticket(self, chat_id: int) -> None:
+    def send_ticket(self, chat_id: int) -> None:
+        """Logic for sending a ticket to the email entered."""
+
         journey = Journey.objects.get(route=self.bot_instance.selected_route)
 
         TicketManager.create_ticket(

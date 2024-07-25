@@ -1,6 +1,4 @@
 from django.db.models import QuerySet
-
-from bus.management.commands.bot_utils.image_generator import ImageGenerator
 from bus.models import Ticket, Journey
 
 
@@ -34,6 +32,8 @@ class TicketManager:
 
     @staticmethod
     def get_username(email: str) -> str:
+        """Gets username from db."""
+
         filtered = Ticket.objects.filter(email=email)
         if len(filtered):
             return filtered[0].name

@@ -49,20 +49,25 @@ Run the bot:
 ```
 
 #### Workflow
-* Enter `/start`command to start the bot.
-* Enter your email. 
-* If this email exists in the database,  
-you will see options to display your bought tickets or the all available ones.  
-![alt text](images/start_bot.png)  
+* Enter `/start`command to start the bot.  
+You will see a greeting message with commands.   
+![alt text](images/welcome.png)
 
 * If you choose to display available tickets, you will be prompted to select a route.  
 ![alt text](images/route.png)  
 
 * Then you will see a grid with tickets.  
-![alt text](images/tickets.png)  
+![alt text](images/seats.png)  
 
-* If you click an available seat, you buy it, and it will be sent to your email.  
+* If you click an available seat to buy, you will be prompted to enter your email and then a verification code.  
+After it, you should confirm or cancel your order.  
+![alt text](images/verification.png)  
+
+* If you confirm, the ticket will be sent to your email.  
 ![alt text](images/email.png)  
+
+* You can also see what tickets you have already purchased, if any.  
+![alt text](images/check_tickets.png)  
 
 ## Frontend  
 

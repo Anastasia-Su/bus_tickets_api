@@ -1,15 +1,14 @@
-from bus.management.commands.bot_utils.main_options_display import (
-    MainOptionsDisplay,
-)
 from bus.management.commands.bot_utils.ticket_manager import TicketManager
 from bus.management.commands.bot_utils.uis_generators import UIGenerators
 
 
 class UserTicketsChecker:
-    def __init__(self, bot_instance):
+    def __init__(self, bot_instance) -> None:
         self.bot_instance = bot_instance
 
     def check_my_tickets(self, chat_id: int) -> None:
+        """Display user tickets, if any."""
+
         if self.bot_instance.user_email:
             if TicketManager.email_exists(self.bot_instance.user_email):
                 my_tickets = TicketManager.get_user_tickets(
